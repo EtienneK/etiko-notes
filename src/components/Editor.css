@@ -281,6 +281,6 @@ div[data-milkdown-root="true"], .milkdown, div.ProseMirror.editor {
 div.ProseMirror.editor {
   overflow-y: scroll;
   width: 100%;
-  padding-left: max(calc(50% - 50ch), 6ch);
+  padding-left: max(calc(50% - 50ch), 2ch);
   padding-right: max(calc(50% - 50ch), 2ch);
 }

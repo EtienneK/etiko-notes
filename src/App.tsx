@@ -15,7 +15,7 @@ interface NoteWithoutText {
   lastModified: Date;
 }
 
-interface Note extends NoteWithoutText {
+export interface Note extends NoteWithoutText {
   text: string;
 }
 
@@ -97,7 +97,8 @@ function createNote() {
 function App() {
   const editorRef = React.useRef<EditorRef>(null);
   const [notes, setNotes] = useState<NoteWithoutText[]>([]);
-  const [currentNote, setCurrentNote] = useState<Note | null>(null);
+  const [currentNote, setCurrentNote] = useState<Note>(createNote());
+  const [shouldFocus, setShouldFocus] = useState(false);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -112,16 +113,20 @@ function App() {
     setNotes([...notes, newNote]);
     setCurrentNote(newNote);
     noteService.save(newNote);
-    editorRef.current?.replaceAll(newNote.text, true);
-    editorRef.current?.focus();
+    setShouldFocus(true);
+  };
+
+  const handleNoteClick = async (id: string) => {
+    const note = await noteService.get(id);
+    if (note) {
+      setCurrentNote(note);
+    }
   };
 
   function onMarkdownUpdated() {
     return () => {
       const markdown = editorRef.current?.getMarkdown();
-      console.log(currentNote);
       if (currentNote && markdown) {
-        console.log(markdown);
         const updatedNote = { ...currentNote, text: markdown, lastModified: new Date() };
         setCurrentNote(updatedNote);
         noteService.save(updatedNote);
@@ -129,7 +134,12 @@ function App() {
     }
   };
 
-  console.log(currentNote);
+  function onMounted() {
+    if (shouldFocus) {
+      editorRef.current?.focus();
+      setShouldFocus(false);
+    }
+  }
 
   return (
     <>
@@ -159,7 +169,7 @@ function App() {
           </button>
 
           <MilkdownProvider>
-            <Editor onMarkdownUpdated={onMarkdownUpdated()} ref={editorRef} />
+            <Editor onMarkdownUpdated={onMarkdownUpdated()} onMounted={onMounted} ref={editorRef} currentNote={currentNote} />
           </MilkdownProvider>
         </div>
         <div className="drawer-side z-2">
@@ -173,7 +183,7 @@ function App() {
             {/* Sidebar content here */}
             {notes.map(note => (
               <li key={note.id}>
-                <a>{note.title}</a>
+                <a onClick={() => handleNoteClick(note.id)}>{note.title}</a>
               </li>
             ))}
           </ul>

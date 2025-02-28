@@ -2,3 +2,9 @@ html, body, div#root {
   height: 100%;
   overflow: hidden;
 }
+
+div.ProseMirror.editor {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+}

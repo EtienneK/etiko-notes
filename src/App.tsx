@@ -18,7 +18,9 @@ function App() {
           >
             <GiHamburgerMenu />
           </label>
-          {/* Content */}
+          <MilkdownProvider>
+            <Editor />
+          </MilkdownProvider>
         </div>
         <div className="drawer-side z-2">
           <label
@@ -38,9 +40,6 @@ function App() {
           </ul>
         </div>
       </div>
-      <MilkdownProvider>
-        <Editor />
-      </MilkdownProvider>
     </>
   );
 }

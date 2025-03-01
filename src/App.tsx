@@ -94,6 +94,9 @@ function createNote() {
   return newNote;
 }
 
+
+let firstCreationLock = true; // Lock for run conditions on startup: Running React in strict mode could call useEffects more than once
+
 function App() {
   const editorRef = React.useRef<EditorRef>(null);
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
@@ -101,19 +104,32 @@ function App() {
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
 
+  async function createNoteAndSave() {
+    const newNote = createNote();
+    await noteService.save(newNote);
+    return newNote;
+  }
+
   useEffect(() => {
     const fetchNotes = async () => {
-      const notes = await noteService.list();
-      setNotes(notes);
-      setCurrentNote(notes[0] ? await noteService.get(notes[0].id) : await handleCreateNote());
+      const notesInStorage = await noteService.list();
+      if (notesInStorage.length > 0) {
+        setNotes(notesInStorage);
+        setCurrentNote(await noteService.get(notesInStorage[0].id));
+      } else {
+        if (firstCreationLock) {
+          firstCreationLock = false;
+          const newNote = await createNoteAndSave();
+          setNotes([newNote]);
+          setCurrentNote(newNote);
+        }
+      }
     };
     fetchNotes();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateNote = async () => {
     const newNote = createNote();
-    setNotes([...notes, newNote]);
     setCurrentNote(newNote);
     noteService.save(newNote);
     setShouldFocus(true);
@@ -135,27 +151,33 @@ function App() {
     if (currentNote) {
       await noteService.delete(currentNote.id);
       const updatedNotes = notes.filter(note => note.id !== currentNote.id);
-      setNotes(updatedNotes);
       if (updatedNotes.length > 0) {
-        const nextNote = await noteService.get(updatedNotes[0].id);
+        setNotes(updatedNotes);
+        const nextNote = await noteService.get(notes[0].id);
         if (nextNote) {
           setCurrentNote(nextNote);
         }
       } else {
-        const newNote = await handleCreateNote();
+        const newNote = await createNoteAndSave();
         setNotes([newNote]);
+        setCurrentNote(newNote);
       }
     }
   };
 
   function onMarkdownUpdated() {
-    return () => {
+    return async () => {
       const markdown = editorRef.current?.getMarkdown();
       if (currentNote && markdown) {
         const updatedNote = { ...currentNote, text: markdown, lastModified: new Date() };
         setCurrentNote(updatedNote);
-        noteService.save(updatedNote);
-        setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
+        await noteService.save(updatedNote);
+        if (currentNote.id !== notes[0].id) {
+          setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
+        } else {
+          notes[0] = updatedNote;
+          setNotes(notes);
+        }
       }
     }
   };
@@ -197,6 +219,7 @@ function App() {
           <MilkdownProvider>
             <Editor onMarkdownUpdated={onMarkdownUpdated()} onMounted={onMounted} ref={editorRef} currentNote={currentNote} />
           </MilkdownProvider>
+
         </div>
         <div className="drawer-side z-2">
           <label
@@ -211,7 +234,9 @@ function App() {
               <li key={note.id}>
                 <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.id === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
                   {note.title}
+                  <span className='block text-xs font-semibold opacity-60'>{note.lastModified.toLocaleString()}</span>
                 </a>
+
               </li>
             ))}
           </ul>

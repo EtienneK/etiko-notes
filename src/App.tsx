@@ -95,7 +95,11 @@ function createNote() {
 }
 
 function App() {
+
+  console.log("rendering");
+
   const editorRef = React.useRef<EditorRef>(null);
+  const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
   const [notes, setNotes] = useState<NoteWithoutText[]>([]);
   const [currentNote, setCurrentNote] = useState<Note>(createNote());
   const [shouldFocus, setShouldFocus] = useState(false);
@@ -108,18 +112,41 @@ function App() {
     fetchNotes();
   }, []);
 
-  const handleCreateNote = () => {
+  const handleCreateNote = async () => {
     const newNote = createNote();
     setNotes([...notes, newNote]);
     setCurrentNote(newNote);
     noteService.save(newNote);
     setShouldFocus(true);
+    setNotes([newNote, ...notes]);
+    return newNote;
   };
 
   const handleNoteClick = async (id: string) => {
     const note = await noteService.get(id);
     if (note) {
       setCurrentNote(note);
+      if (drawerRef.current) {
+        drawerRef.current.checked = false; // Uncheck the drawer checkbox to close the drawer
+      }
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (currentNote) {
+      await noteService.delete(currentNote.id);
+      const updatedNotes = notes.filter(note => note.id !== currentNote.id);
+      setNotes(updatedNotes);
+      if (updatedNotes.length > 0) {
+        const nextNote = await noteService.get(updatedNotes[0].id);
+        if (nextNote) {
+          setCurrentNote(nextNote);
+        }
+      } else {
+        const newNote = createNote();
+        setCurrentNote(newNote);
+        setNotes([newNote]);
+      }
     }
   };
 
@@ -130,6 +157,7 @@ function App() {
         const updatedNote = { ...currentNote, text: markdown, lastModified: new Date() };
         setCurrentNote(updatedNote);
         noteService.save(updatedNote);
+        setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
       }
     }
   };
@@ -144,7 +172,7 @@ function App() {
   return (
     <>
       <div className="drawer h-full">
-        <input id="main-drawer" type="checkbox" className="drawer-toggle" />
+        <input id="main-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
         <div className="drawer-content h-full min-h-full">
           {/* Page content here */}
 
@@ -156,7 +184,7 @@ function App() {
               <GiHamburgerMenu />
             </label>
 
-            <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary">
+            <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary" onClick={handleDeleteNote}>
               <MdDeleteForever />
             </button>
           </div>
@@ -179,11 +207,13 @@ function App() {
             className="drawer-overlay"
           >
           </label>
-          <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4">
+          <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 text-ellipsis">
             {/* Sidebar content here */}
             {notes.map(note => (
-              <li key={note.id}>
-                <a onClick={() => handleNoteClick(note.id)}>{note.title}</a>
+              <li key={note.id} className=''>
+                <a className='block text-ellipsis w-70 overflow-hidden whitespace-nowrap ' onClick={() => handleNoteClick(note.id)}>
+                  {note.title}
+                </a>
               </li>
             ))}
           </ul>

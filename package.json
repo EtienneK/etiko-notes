@@ -13,6 +13,7 @@
     "@milkdown/crepe": "^7.6.3",
     "@milkdown/kit": "^7.6.3",
     "@milkdown/react": "^7.6.3",
+    "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.0.9",
     "daisyui": "^5.0.0",
     "nanoid": "^5.1.2",

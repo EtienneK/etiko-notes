@@ -4,7 +4,7 @@ import { Crepe } from "@milkdown/crepe";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { replaceAll } from '@milkdown/kit/utils';
-import { editorViewCtx, Editor as MilkdownEditor } from '@milkdown/kit/core'
+import { editorViewCtx, editorViewOptionsCtx, Editor as MilkdownEditor } from '@milkdown/kit/core'
 
 import "@milkdown/crepe/theme/common/style.css";
 // import "@milkdown/crepe/theme/nord.css";
@@ -54,6 +54,12 @@ function Editor(props: EditorProps) {
         listener.mounted(() => {
           props.onMounted()
         });
+
+        // Add attributes to the editor container
+        ctx.update(editorViewOptionsCtx, (prev) => ({
+          ...prev,
+          attributes: { class: '', spellcheck: 'false' },
+        }))
       })
       .use(listener);
 

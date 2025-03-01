@@ -59,7 +59,7 @@ function Editor(props: EditorProps) {
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
           attributes: {
-            class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl',
+            class: 'prose sm:prose-base md:prose-lg lg:prose-xl',
             spellcheck: 'true',
           },
         }))

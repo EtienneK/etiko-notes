@@ -58,7 +58,10 @@ function Editor(props: EditorProps) {
         // Add attributes to the editor container
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
-          attributes: { class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl', spellcheck: 'false' },
+          attributes: {
+            class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl',
+            spellcheck: 'true',
+          },
         }))
       })
       .use(listener);

@@ -263,7 +263,6 @@ function App() {
                   {note.title}
                   <span className='block text-xs font-semibold opacity-60'>{note.lastModified.toLocaleString()}</span>
                 </a>
-
               </li>
             ))}
           </ul>

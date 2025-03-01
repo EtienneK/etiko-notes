@@ -100,6 +100,7 @@ let firstCreationLock = true; // Lock for run conditions on startup: Running Rea
 function App() {
   const editorRef = React.useRef<EditorRef>(null);
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
+  const deleteModalRef = React.useRef<HTMLDialogElement>(null);
   const [notes, setNotes] = useState<NoteWithoutText[]>([]);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
@@ -153,7 +154,7 @@ function App() {
       const updatedNotes = notes.filter(note => note.id !== currentNote.id);
       if (updatedNotes.length > 0) {
         setNotes(updatedNotes);
-        const nextNote = await noteService.get(notes[0].id);
+        const nextNote = await noteService.get(updatedNotes[0].id);
         if (nextNote) {
           setCurrentNote(nextNote);
         }
@@ -191,6 +192,22 @@ function App() {
 
   return (
     <>
+      {/* Delete Confirmation Modal */}
+      <dialog className="modal modal-bottom sm:modal-middle" ref={deleteModalRef}>
+        <div className="modal-box">
+          <p className="py-4">
+            Are you sure you want to delete '{currentNote?.title}'?
+          </p>
+          <div className="modal-action">
+            <form method="dialog">
+              {/* if there is a button in form, it will close the modal */}
+              <button className="btn btn-neutral mr-2">Cancel</button>
+              <button className="btn btn-warning" onClick={handleDeleteNote}>Delete</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
+
       <div className="drawer h-full">
         <input id="main-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
         <div className="drawer-content h-full min-h-full">
@@ -205,7 +222,7 @@ function App() {
             </label>
 
             <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary"
-              onClick={handleDeleteNote}
+              onClick={() => deleteModalRef.current?.showModal()}
               disabled={!currentNote}
             >
               <MdDeleteForever />
@@ -222,11 +239,11 @@ function App() {
 
           <MilkdownProvider>
             <Editor
-            onMarkdownUpdated={onMarkdownUpdated()}
-            onMounted={onMounted}
-            ref={editorRef}
-            currentNote={currentNote}
-            readonly={!currentNote}
+              onMarkdownUpdated={onMarkdownUpdated()}
+              onMounted={onMounted}
+              ref={editorRef}
+              currentNote={currentNote}
+              readonly={!currentNote}
             />
           </MilkdownProvider>
 

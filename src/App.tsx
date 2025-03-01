@@ -204,7 +204,10 @@ function App() {
               <GiHamburgerMenu />
             </label>
 
-            <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary" onClick={handleDeleteNote}>
+            <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary"
+              onClick={handleDeleteNote}
+              disabled={!currentNote}
+            >
               <MdDeleteForever />
             </button>
           </div>
@@ -212,12 +215,19 @@ function App() {
           <button
             className="btn btn-ghost text-3xl p-1 fixed top-0 end-0 m-2 z-1 opacity-75 text-primary"
             onClick={handleCreateNote}
+            disabled={!currentNote}
           >
             <MdNoteAdd />
           </button>
 
           <MilkdownProvider>
-            <Editor onMarkdownUpdated={onMarkdownUpdated()} onMounted={onMounted} ref={editorRef} currentNote={currentNote} />
+            <Editor
+            onMarkdownUpdated={onMarkdownUpdated()}
+            onMounted={onMounted}
+            ref={editorRef}
+            currentNote={currentNote}
+            readonly={!currentNote}
+            />
           </MilkdownProvider>
 
         </div>

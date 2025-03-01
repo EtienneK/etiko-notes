@@ -21,6 +21,7 @@ export interface EditorRef {
 export interface EditorProps {
   currentNote: Note | null;
   ref: React.RefObject<EditorRef | null>;
+  readonly: boolean;
 
   onMarkdownUpdated: () => void;
   onMounted: () => void;
@@ -40,6 +41,8 @@ function Editor(props: EditorProps) {
       editor: crepe.editor,
     };
 
+    crepe.setReadonly(props.readonly);
+
     crepe.editor
       .config((ctx) => {
         const listener = ctx.get(listenerCtx);
@@ -55,7 +58,7 @@ function Editor(props: EditorProps) {
       .use(listener);
 
     return crepe;
-  }, [props.currentNote?.id ?? 'null']);
+  }, [props.currentNote?.id ?? 'null', props.readonly]);
 
   return <Milkdown />;
 }

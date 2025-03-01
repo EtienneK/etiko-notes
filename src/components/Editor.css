@@ -4,6 +4,10 @@
     padding: 0;
   }
 
+  :focus-visible {
+    outline: none;
+  }
+
   .ProseMirror {
     padding: 60px 120px;
 

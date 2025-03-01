@@ -193,7 +193,7 @@ function App() {
   return (
     <>
       {/* Delete Confirmation Modal */}
-      <dialog className="modal modal-bottom sm:modal-middle" ref={deleteModalRef}>
+      <dialog className="modal" ref={deleteModalRef}>
         <div className="modal-box">
           <p className="py-4">
             Are you sure you want to delete '{currentNote?.title}'?
@@ -202,7 +202,7 @@ function App() {
             <form method="dialog">
               {/* if there is a button in form, it will close the modal */}
               <button className="btn btn-neutral mr-2">Cancel</button>
-              <button className="btn btn-warning" onClick={handleDeleteNote}>Delete</button>
+              <button className="btn btn-primary" onClick={handleDeleteNote}>Delete</button>
             </form>
           </div>
         </div>

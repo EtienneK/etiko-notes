@@ -208,8 +208,8 @@ function App() {
           <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 text-ellipsis">
             {/* Sidebar content here */}
             {notes.map(note => (
-              <li key={note.id} className={currentNote?.id === note.id ? 'bg-primary text-primary-content' : ''}>
-                <a className='block text-ellipsis w-70 overflow-hidden whitespace-nowrap' onClick={() => handleNoteClick(note.id)}>
+              <li key={note.id}>
+                <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.id === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
                   {note.title}
                 </a>
               </li>

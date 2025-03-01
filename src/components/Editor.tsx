@@ -19,7 +19,7 @@ export interface EditorRef {
 }
 
 export interface EditorProps {
-  currentNote: Note;
+  currentNote: Note | null;
   ref: React.RefObject<EditorRef | null>;
 
   onMarkdownUpdated: () => void;
@@ -30,7 +30,7 @@ function Editor(props: EditorProps) {
   useEditor((root) => {
     const crepe = new Crepe({
       root,
-      defaultValue: props.currentNote.text,
+      defaultValue: props.currentNote?.text ?? '',
     });
 
     props.ref.current = {
@@ -55,7 +55,7 @@ function Editor(props: EditorProps) {
       .use(listener);
 
     return crepe;
-  }, [props.currentNote.id]);
+  }, [props.currentNote?.id ?? 'null']);
 
   return <Milkdown />;
 }

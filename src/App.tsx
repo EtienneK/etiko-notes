@@ -95,21 +95,20 @@ function createNote() {
 }
 
 function App() {
-
-  console.log("rendering");
-
   const editorRef = React.useRef<EditorRef>(null);
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
   const [notes, setNotes] = useState<NoteWithoutText[]>([]);
-  const [currentNote, setCurrentNote] = useState<Note>(createNote());
+  const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
 
   useEffect(() => {
     const fetchNotes = async () => {
       const notes = await noteService.list();
       setNotes(notes);
+      setCurrentNote(notes[0] ? await noteService.get(notes[0].id) : await handleCreateNote());
     };
     fetchNotes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateNote = async () => {
@@ -143,8 +142,7 @@ function App() {
           setCurrentNote(nextNote);
         }
       } else {
-        const newNote = createNote();
-        setCurrentNote(newNote);
+        const newNote = await handleCreateNote();
         setNotes([newNote]);
       }
     }
@@ -210,8 +208,8 @@ function App() {
           <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 text-ellipsis">
             {/* Sidebar content here */}
             {notes.map(note => (
-              <li key={note.id} className=''>
-                <a className='block text-ellipsis w-70 overflow-hidden whitespace-nowrap ' onClick={() => handleNoteClick(note.id)}>
+              <li key={note.id} className={currentNote?.id === note.id ? 'bg-primary text-primary-content' : ''}>
+                <a className='block text-ellipsis w-70 overflow-hidden whitespace-nowrap' onClick={() => handleNoteClick(note.id)}>
                   {note.title}
                 </a>
               </li>

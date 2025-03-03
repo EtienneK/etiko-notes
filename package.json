@@ -20,7 +20,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
-    "tailwindcss": "^4.0.9"
+    "tailwindcss": "^4.0.9",
+    "y-indexeddb": "^9.0.12",
+    "yjs": "^13.6.23"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

@@ -6,80 +6,123 @@ import { GiHamburgerMenu } from "react-icons/gi";
 import { MdNoteAdd } from "react-icons/md";
 import { MdDeleteForever } from "react-icons/md";
 
+import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
+
 import Editor, { EditorRef } from "./components/Editor";
 import "./App.css";
 
-interface NoteWithoutText {
+interface NoteMetaData {
   readonly id: string;
   title: string;
-  lastModified: Date;
+  lastModified: number;
 }
 
-export interface Note extends NoteWithoutText {
+export interface Note extends NoteMetaData {
   text: string;
 }
 
 interface NoteService {
   save(note: Note): Promise<void>;
-  list(): Promise<NoteWithoutText[]>;
+  list(): Promise<NoteMetaData[]>;
   get(id: string): Promise<Note | null>;
   search(text: string): Promise<Note[]>;
   delete(id: string): Promise<void>;
 }
 
-interface NoteLocalStorage {
-  readonly id: string;
-  title: string;
-  text: string;
-  lastModified: string;
-}
-
 class LocalStorageNoteService implements NoteService {
-  async delete(id: string) {
-    localStorage.removeItem(this._key(id));
+  private readonly rootDoc: Y.Doc;
+  private readonly notes: Y.Map<Y.Map<string | number | Y.Doc>>;
+  private readonly persistence: IndexeddbPersistence;
+  private readonly notesPersistence: { [key: string]: IndexeddbPersistence} = {};
+
+  constructor() {
+    this.rootDoc = new Y.Doc();
+    this.notes = this.rootDoc.getMap();
+    this.persistence = new IndexeddbPersistence("notes", this.rootDoc);
   }
 
-  async search(text: string) {
-    return Object.keys(localStorage).map(id => {
-      const note = JSON.parse(localStorage.getItem(id)!) as NoteLocalStorage;
-      return {
-        id: note.id,
-        title: note.title,
-        text: note.text,
-        lastModified: new Date(note.lastModified)
-      };
-    }).filter(note => {
-      return note.text.toLowerCase().includes(text.toLowerCase()) || note.title.toLowerCase().includes(text.toLowerCase());
-    });
+  private async persist(doc: Y.Doc): Promise<Y.Doc> {
+    if (!this.notesPersistence["note|" + doc.guid]) {
+      const persist = new IndexeddbPersistence("note|" + doc.guid, doc)
+      await persist.whenSynced;
+      this.notesPersistence["note|" + doc.guid] = persist;
+    }
+    return doc;
+  }
+
+  async delete(id: string) {
+    await this.persistence.whenSynced;
+    const note = this.notes.get(id);
+    if (note) {
+      const doc = note.get("text") as Y.Doc;
+      await this.notesPersistence["note|" + doc.guid].clearData();
+      this.notes.delete(id);
+    }
+  }
+
+  search(): Promise<Note[]> {
+    throw new Error("unsupported");
   }
 
   async get(id: string) {
-    const note = localStorage.getItem(this._key(id));
-    return note ? JSON.parse(note) : null;
+    await this.persistence.whenSynced;
+    const note = this.notes.get(id);
+    const doc = await this.persist(note!.get("text") as Y.Doc);
+    const docText = doc.getText("text");
+    const text = docText.toString();
+
+    return note ? {
+      id: note.get("id") as string,
+      title: note.get("title") as string,
+      lastModified: note.get("lastModified") as number,
+      text,
+    } as Note : null;
   }
 
   async save(note: Note) {
+    await this.persistence.whenSynced;
     const maxTitleLength = 50;
     let title = note.text.split('\n')[0].replace(/^#+/, '').trim() || 'Untitled Note';
     if (title.length > maxTitleLength) {
       title = title.substring(0, maxTitleLength).trim() + '...';
     }
     note.title = title;
-    localStorage.setItem(this._key(note.id), JSON.stringify(note));
+
+    const found = this.notes.get(note.id);
+    if (found) {
+      found.set("title", note.title);
+      found.set("lastModified", note.lastModified);
+      const textDoc = await this.persist(found.get("text") as Y.Doc);
+      const textText = textDoc.getText("text");
+      // TODO fix the below so that deltas get inserted
+      textText.delete(0, textText.length);
+      textText.insert(0, note.text);
+    } else {
+      const noteMap = new Y.Map<string | number | Y.Doc>();
+      const textDoc = await this.persist(new Y.Doc());
+      const textText = textDoc.getText("text");
+      textText.insert(0, note.text);
+
+      noteMap.set("id", note.id);
+      noteMap.set("title", note.title);
+      noteMap.set("lastModified", note.lastModified);
+      noteMap.set("text", textDoc)
+      this.notes.set(note.id, noteMap);
+    }
   }
 
   async list() {
-    return Object.keys(localStorage).map(id => {
-      const note = JSON.parse(localStorage.getItem(id)!) as NoteLocalStorage;
+    await this.persistence.whenSynced;
+    return Array.from(this.notes.keys()).map(id => {
+      const note = this.notes.get(id)!;
       return {
-        id: note.id,
-        title: note.title,
-        lastModified: new Date(note.lastModified)
+        id: note.get("id") as string,
+        title: note.get("title") as string,
+        lastModified: note.get("lastModified") as number,
       }
-    }).sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+    }).sort((a, b) => b.lastModified - a.lastModified);
   }
-
-  _key: (id: string) => string = (id) => `notes|${id}`;
 }
 
 const noteService = new LocalStorageNoteService();
@@ -89,7 +132,7 @@ function createNote() {
     id: nanoid(),
     title: 'Untitled Note',
     text: '',
-    lastModified: new Date()
+    lastModified: Date.now()
   };
   return newNote;
 }
@@ -101,7 +144,7 @@ function App() {
   const editorRef = React.useRef<EditorRef>(null);
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
   const deleteModalRef = React.useRef<HTMLDialogElement>(null);
-  const [notes, setNotes] = useState<NoteWithoutText[]>([]);
+  const [notes, setNotes] = useState<NoteMetaData[]>([]);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
 
@@ -170,7 +213,7 @@ function App() {
     return async () => {
       const markdown = editorRef.current?.getMarkdown();
       if (currentNote && markdown) {
-        const updatedNote = { ...currentNote, text: markdown, lastModified: new Date() };
+        const updatedNote = { ...currentNote, text: markdown, lastModified: Date.now() };
         setCurrentNote(updatedNote);
         await noteService.save(updatedNote);
         if (currentNote.id !== notes[0].id) {
@@ -261,7 +304,7 @@ function App() {
               <li key={note.id}>
                 <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.id === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
                   {note.title}
-                  <span className='block text-xs font-semibold opacity-60'>{note.lastModified.toLocaleString()}</span>
+                  <span className='block text-xs font-semibold opacity-60'>{new Date(note.lastModified).toLocaleString()}</span>
                 </a>
               </li>
             ))}

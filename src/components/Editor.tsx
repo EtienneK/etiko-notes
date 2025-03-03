@@ -5,21 +5,25 @@ import { Milkdown, useEditor } from "@milkdown/react";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { replaceAll } from '@milkdown/kit/utils';
 import { editorViewCtx, editorViewOptionsCtx, Editor as MilkdownEditor } from '@milkdown/kit/core'
+import { collab, collabServiceCtx } from "@milkdown/plugin-collab";
+
+import { WebsocketProvider } from 'y-websocket';
 
 import "@milkdown/crepe/theme/common/style.css";
 // import "@milkdown/crepe/theme/nord.css";
 import "./Editor.css";
-import type { Note } from '../App';
+import type { YNote } from '../App';
 
 export interface EditorRef {
   editor: MilkdownEditor;
   getMarkdown(): string;
   replaceAll: (markdown: string, flush: boolean) => void;
   focus(): void;
+  connect(): void;
 }
 
 export interface EditorProps {
-  currentNote: Note | null;
+  currentNote: YNote | null;
   ref: React.RefObject<EditorRef | null>;
   readonly: boolean;
 
@@ -31,7 +35,7 @@ function Editor(props: EditorProps) {
   useEditor((root) => {
     const crepe = new Crepe({
       root,
-      defaultValue: props.currentNote?.text ?? '',
+      defaultValue: '',
     });
 
     props.ref.current = {
@@ -39,6 +43,20 @@ function Editor(props: EditorProps) {
       getMarkdown: () => crepe.getMarkdown(),
       replaceAll: (markdown: string, flush: boolean = false) => crepe.editor.action(replaceAll(markdown, flush)),
       editor: crepe.editor,
+      connect: () => {
+        crepe.editor.action(ctx => {
+          console.log("CONNECT!!");
+          if (props.currentNote?.doc) {
+            const collabService = ctx.get(collabServiceCtx);
+            //const wsProvider = new WebsocketProvider("<YOUR_WS_HOST>", "milkdown", props.currentNote.doc);
+            console.log("DOC", props.currentNote.doc);
+            collabService
+              .bindDoc(props.currentNote.doc)
+              .bindCtx(ctx)
+              .connect();//.setAwareness(wsProvider.awareness).connect();
+          }
+        });
+      }
     };
 
     crepe.setReadonly(props.readonly);
@@ -62,12 +80,13 @@ function Editor(props: EditorProps) {
             class: 'prose sm:prose-base md:prose-lg lg:prose-xl',
             spellcheck: 'true',
           },
-        }))
+        }));
       })
-      .use(listener);
+      .use(listener)
+      .use(collab);
 
     return crepe;
-  }, [props.currentNote?.id ?? 'null', props.readonly]);
+  }, [props.currentNote?.noteId ?? 'null', props.readonly ]);
 
   return <Milkdown />;
 }

@@ -12,6 +12,7 @@
   "dependencies": {
     "@milkdown/crepe": "^7.6.3",
     "@milkdown/kit": "^7.6.3",
+    "@milkdown/plugin-collab": "^7.6.3",
     "@milkdown/react": "^7.6.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.0.9",
@@ -22,6 +23,9 @@
     "react-icons": "^5.5.0",
     "tailwindcss": "^4.0.9",
     "y-indexeddb": "^9.0.12",
+    "y-prosemirror": "^1.2.16",
+    "y-protocols": "^1.0.6",
+    "y-websocket": "^2.1.0",
     "yjs": "^13.6.23"
   },
   "devDependencies": {

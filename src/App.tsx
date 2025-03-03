@@ -12,62 +12,41 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import Editor, { EditorRef } from "./components/Editor";
 import "./App.css";
 
-interface NoteMetaData {
+export interface NoteMetaData {
   readonly id: string;
   title: string;
   lastModified: number;
+  docGuid?: string;
 }
 
-export interface Note extends NoteMetaData {
-  text: string;
+export interface YNote {
+  readonly noteId: string;
+  readonly doc: Y.Doc;
+  readonly persistence: IndexeddbPersistence;
 }
 
 interface NoteService {
-  save(note: Note): Promise<void>;
+  save(note: NoteMetaData): Promise<void>;
   list(): Promise<NoteMetaData[]>;
-  get(id: string): Promise<Note | null>;
-  getDoc(id: string): Promise<Y.Doc | null>;
+  get(id: string): Promise<NoteMetaData | null>;
   delete(id: string): Promise<void>;
 }
 
 class YjsNoteService implements NoteService {
   private readonly rootDoc: Y.Doc;
-  private readonly notes: Y.Map<Y.Map<string | number | Y.Doc>>;
+  private readonly notes: Y.Map<Y.Map<string | number | undefined>>;
   private readonly persistence: IndexeddbPersistence;
-  private readonly notesPersistence: { [key: string]: IndexeddbPersistence} = {};
 
   constructor() {
     this.rootDoc = new Y.Doc();
     this.notes = this.rootDoc.getMap();
-    this.persistence = new IndexeddbPersistence("notes", this.rootDoc);
-  }
-
-  async getDoc(id: string): Promise<Y.Doc | null> {
-    await this.persistence.whenSynced;
-
-    const note = this.notes.get(id);
-    if (!note) return null;
-    return await this.persist(note.get("text") as Y.Doc);
-  }
-
-  private async persist(doc: Y.Doc): Promise<Y.Doc> {
-    if (!this.notesPersistence["note|" + doc.guid]) {
-      const persist = new IndexeddbPersistence("note|" + doc.guid, doc)
-      await persist.whenSynced;
-      this.notesPersistence["note|" + doc.guid] = persist;
-    }
-    return doc;
+    this.persistence = new IndexeddbPersistence("notes-list", this.rootDoc);
   }
 
   async delete(id: string) {
     await this.persistence.whenSynced;
 
-    const note = this.notes.get(id);
-    if (note) {
-      const doc = note.get("text") as Y.Doc;
-      await this.notesPersistence["note|" + doc.guid].clearData();
-      this.notes.delete(id);
-    }
+    this.notes.delete(id);
   }
 
   async get(id: string) {
@@ -76,40 +55,30 @@ class YjsNoteService implements NoteService {
     const note = this.notes.get(id);
     if (!note) return null;
 
-    const doc = await this.persist(note!.get("text") as Y.Doc);
-    const docText = doc.getText("text");
-    const text = docText.toString();
-
     return {
       id: note.get("id") as string,
       title: note.get("title") as string,
       lastModified: note.get("lastModified") as number,
-      text,
-    } as Note;
+      docGuid: note.get("docGuid"),
+    } as NoteMetaData;
   }
 
-  async save(note: Note) {
+  async save(note: NoteMetaData) {
     await this.persistence.whenSynced;
 
     const found = this.notes.get(note.id);
     if (found) {
       found.set("title", note.title);
       found.set("lastModified", note.lastModified);
-      const textDoc = await this.persist(found.get("text") as Y.Doc);
-      const textText = textDoc.getText("text");
-      // TODO fix the below so that deltas get inserted
-      textText.delete(0, textText.length);
-      textText.insert(0, note.text);
+      found.set("docGuid", note.docGuid);
     } else {
-      const noteMap = new Y.Map<string | number | Y.Doc>();
-      const textDoc = await this.persist(new Y.Doc());
-      const textText = textDoc.getText("text");
-      textText.insert(0, note.text);
+      const noteMap = new Y.Map<string | number | undefined>();
 
       noteMap.set("id", note.id);
       noteMap.set("title", note.title);
       noteMap.set("lastModified", note.lastModified);
-      noteMap.set("text", textDoc)
+      noteMap.set("docGuid", note.docGuid);
+
       this.notes.set(note.id, noteMap);
     }
   }
@@ -123,12 +92,13 @@ class YjsNoteService implements NoteService {
         id: note.get("id") as string,
         title: note.get("title") as string,
         lastModified: note.get("lastModified") as number,
+        docGuid: note.get("docGuid") as string | undefined,
       }
     }).sort((a, b) => b.lastModified - a.lastModified);
   }
 }
 
-const noteService = new YjsNoteService();
+const noteMetaDataService = new YjsNoteService();
 
 function createNote() {
   const newNote = {
@@ -148,27 +118,53 @@ function App() {
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
   const deleteModalRef = React.useRef<HTMLDialogElement>(null);
   const [notes, setNotes] = useState<NoteMetaData[]>([]);
-  const [currentNote, setCurrentNote] = useState<Note | null>(null);
+  const [currentNote, setCurrentNote] = useState<YNote | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
 
   async function createNoteAndSave() {
     const newNote = createNote();
-    await noteService.save(newNote);
+    await noteMetaDataService.save(newNote);
     return newNote;
+  }
+
+  async function setCurrent(noteId: string) {
+    await currentNote?.persistence.destroy();
+    currentNote?.doc.destroy();
+
+    const noteMetaData = await noteMetaDataService.get(noteId);
+    if (!noteMetaData) {
+      throw Error(`Note with ID '${noteId}' does not exist`);
+    }
+    console.log(noteMetaData.docGuid);
+
+    const doc = new Y.Doc({ guid: noteMetaData.docGuid });
+    if (!noteMetaData.docGuid) {
+      noteMetaData.docGuid = doc.guid;
+      await noteMetaDataService.save(noteMetaData);
+    }
+
+    const persistence = new IndexeddbPersistence(`note|${noteId}`, doc);
+    await persistence.whenSynced;
+
+    setCurrentNote({
+      noteId,
+      doc,
+      persistence,
+    });
   }
 
   useEffect(() => {
     const fetchNotes = async () => {
-      const notesInStorage = await noteService.list();
+      const notesInStorage = await noteMetaDataService.list();
       if (notesInStorage.length > 0) {
         setNotes(notesInStorage);
-        setCurrentNote(await noteService.get(notesInStorage[0].id));
+        setCurrent(notesInStorage[0].id);
       } else {
         if (firstCreationLock) {
           firstCreationLock = false;
           const newNote = await createNoteAndSave();
           setNotes([newNote]);
-          setCurrentNote(newNote);
+          setCurrent(newNote.id);
         }
       }
     };
@@ -177,17 +173,17 @@ function App() {
 
   const handleCreateNote = async () => {
     const newNote = createNote();
-    setCurrentNote(newNote);
-    noteService.save(newNote);
+    setCurrent(newNote.id);
+    noteMetaDataService.save(newNote);
     setShouldFocus(true);
     setNotes([newNote, ...notes]);
     return newNote;
   };
 
   const handleNoteClick = async (id: string) => {
-    const note = await noteService.get(id);
+    const note = await noteMetaDataService.get(id);
     if (note) {
-      setCurrentNote(note);
+      setCurrent(note.id);
       if (drawerRef.current) {
         drawerRef.current.checked = false; // Uncheck the drawer checkbox to close the drawer
       }
@@ -196,18 +192,19 @@ function App() {
 
   const handleDeleteNote = async () => {
     if (currentNote) {
-      await noteService.delete(currentNote.id);
-      const updatedNotes = notes.filter(note => note.id !== currentNote.id);
+      await currentNote.persistence.clearData();
+      await noteMetaDataService.delete(currentNote.noteId);
+      const updatedNotes = notes.filter(note => note.id !== currentNote.noteId);
       if (updatedNotes.length > 0) {
         setNotes(updatedNotes);
-        const nextNote = await noteService.get(updatedNotes[0].id);
+        const nextNote = await noteMetaDataService.get(updatedNotes[0].id);
         if (nextNote) {
-          setCurrentNote(nextNote);
+          setCurrent(nextNote.id);
         }
       } else {
         const newNote = await createNoteAndSave();
         setNotes([newNote]);
-        setCurrentNote(newNote);
+        setCurrent(newNote.id);
       }
     }
   };
@@ -221,20 +218,21 @@ function App() {
         if (title.length > maxTitleLength) {
           title = title.substring(0, maxTitleLength).trim() + '...';
         }
-        const updatedNote = { ...currentNote, title, text: markdown, lastModified: Date.now() };
-        setCurrentNote(updatedNote);
-        await noteService.save(updatedNote);
-        if (currentNote.id !== notes[0].id) {
-          setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
-        } else {
-          notes[0] = updatedNote;
-          setNotes(notes);
-        }
+        const updatedNote: NoteMetaData = {
+          id: currentNote.noteId,
+          title,
+          lastModified: Date.now()
+        };
+        // setCurrent(updatedNote);
+        await noteMetaDataService.save(updatedNote);
+        setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
       }
     }
   };
 
   function onMounted() {
+    setTimeout(() => {editorRef.current?.connect();}, 100);
+
     if (shouldFocus) {
       editorRef.current?.focus();
       setShouldFocus(false);
@@ -247,7 +245,7 @@ function App() {
       <dialog className="modal" ref={deleteModalRef}>
         <div className="modal-box">
           <p className="py-4">
-            Are you sure you want to delete '{currentNote?.title}'?
+            Are you sure you want to delete the current note?
           </p>
           <div className="modal-action">
             <form method="dialog">
@@ -310,7 +308,7 @@ function App() {
             {/* Sidebar content here */}
             {notes.map(note => (
               <li key={note.id}>
-                <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.id === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
+                <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.noteId === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
                   {note.title}
                   <span className='block text-xs font-semibold opacity-60'>{new Date(note.lastModified).toLocaleString()}</span>
                 </a>

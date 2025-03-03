@@ -26,11 +26,11 @@ interface NoteService {
   save(note: Note): Promise<void>;
   list(): Promise<NoteMetaData[]>;
   get(id: string): Promise<Note | null>;
-  search(text: string): Promise<Note[]>;
+  getDoc(id: string): Promise<Y.Doc | null>;
   delete(id: string): Promise<void>;
 }
 
-class LocalStorageNoteService implements NoteService {
+class YjsNoteService implements NoteService {
   private readonly rootDoc: Y.Doc;
   private readonly notes: Y.Map<Y.Map<string | number | Y.Doc>>;
   private readonly persistence: IndexeddbPersistence;
@@ -40,6 +40,14 @@ class LocalStorageNoteService implements NoteService {
     this.rootDoc = new Y.Doc();
     this.notes = this.rootDoc.getMap();
     this.persistence = new IndexeddbPersistence("notes", this.rootDoc);
+  }
+
+  async getDoc(id: string): Promise<Y.Doc | null> {
+    await this.persistence.whenSynced;
+
+    const note = this.notes.get(id);
+    if (!note) return null;
+    return await this.persist(note.get("text") as Y.Doc);
   }
 
   private async persist(doc: Y.Doc): Promise<Y.Doc> {
@@ -53,6 +61,7 @@ class LocalStorageNoteService implements NoteService {
 
   async delete(id: string) {
     await this.persistence.whenSynced;
+
     const note = this.notes.get(id);
     if (note) {
       const doc = note.get("text") as Y.Doc;
@@ -61,33 +70,26 @@ class LocalStorageNoteService implements NoteService {
     }
   }
 
-  search(): Promise<Note[]> {
-    throw new Error("unsupported");
-  }
-
   async get(id: string) {
     await this.persistence.whenSynced;
+
     const note = this.notes.get(id);
+    if (!note) return null;
+
     const doc = await this.persist(note!.get("text") as Y.Doc);
     const docText = doc.getText("text");
     const text = docText.toString();
 
-    return note ? {
+    return {
       id: note.get("id") as string,
       title: note.get("title") as string,
       lastModified: note.get("lastModified") as number,
       text,
-    } as Note : null;
+    } as Note;
   }
 
   async save(note: Note) {
     await this.persistence.whenSynced;
-    const maxTitleLength = 50;
-    let title = note.text.split('\n')[0].replace(/^#+/, '').trim() || 'Untitled Note';
-    if (title.length > maxTitleLength) {
-      title = title.substring(0, maxTitleLength).trim() + '...';
-    }
-    note.title = title;
 
     const found = this.notes.get(note.id);
     if (found) {
@@ -114,6 +116,7 @@ class LocalStorageNoteService implements NoteService {
 
   async list() {
     await this.persistence.whenSynced;
+
     return Array.from(this.notes.keys()).map(id => {
       const note = this.notes.get(id)!;
       return {
@@ -125,7 +128,7 @@ class LocalStorageNoteService implements NoteService {
   }
 }
 
-const noteService = new LocalStorageNoteService();
+const noteService = new YjsNoteService();
 
 function createNote() {
   const newNote = {
@@ -213,7 +216,12 @@ function App() {
     return async () => {
       const markdown = editorRef.current?.getMarkdown();
       if (currentNote && markdown) {
-        const updatedNote = { ...currentNote, text: markdown, lastModified: Date.now() };
+        const maxTitleLength = 50;
+        let title = markdown.split('\n')[0].replace(/^#+/, '').trim() || 'Untitled Note';
+        if (title.length > maxTitleLength) {
+          title = title.substring(0, maxTitleLength).trim() + '...';
+        }
+        const updatedNote = { ...currentNote, title, text: markdown, lastModified: Date.now() };
         setCurrentNote(updatedNote);
         await noteService.save(updatedNote);
         if (currentNote.id !== notes[0].id) {

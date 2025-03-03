@@ -7,7 +7,7 @@ import { replaceAll } from '@milkdown/kit/utils';
 import { editorViewCtx, editorViewOptionsCtx, Editor as MilkdownEditor } from '@milkdown/kit/core'
 import { collab, collabServiceCtx } from "@milkdown/plugin-collab";
 
-import { WebsocketProvider } from 'y-websocket';
+// import { WebsocketProvider } from 'y-websocket';
 
 import "@milkdown/crepe/theme/common/style.css";
 // import "@milkdown/crepe/theme/nord.css";

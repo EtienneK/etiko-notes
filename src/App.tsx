@@ -231,7 +231,7 @@ function App() {
   };
 
   function onMounted() {
-    setTimeout(() => {editorRef.current?.connect();}, 100);
+    setTimeout(() => {editorRef.current?.connect();}, 100); // TODO: FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     if (shouldFocus) {
       editorRef.current?.focus();

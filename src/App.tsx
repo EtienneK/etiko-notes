@@ -98,10 +98,9 @@ class YjsNoteService implements NoteService {
 const noteMetaDataService = new YjsNoteService();
 
 function createNote() {
-  const newNote = {
+  const newNote: NoteMetaData = {
     id: nanoid(),
     title: 'Untitled Note',
-    text: '',
     lastModified: Date.now()
   };
   return newNote;

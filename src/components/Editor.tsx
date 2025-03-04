@@ -7,7 +7,7 @@ import { replaceAll } from '@milkdown/kit/utils';
 import { editorViewCtx, editorViewOptionsCtx, Editor as MilkdownEditor } from '@milkdown/kit/core'
 import { collab, collabServiceCtx } from "@milkdown/plugin-collab";
 
-// import { WebsocketProvider } from 'y-websocket';
+//import { WebsocketProvider } from 'y-websocket';
 
 import "@milkdown/crepe/theme/common/style.css";
 // import "@milkdown/crepe/theme/nord.css";
@@ -47,11 +47,12 @@ function Editor(props: EditorProps) {
         crepe.editor.action(ctx => {
           if (props.currentNote?.doc) {
             const collabService = ctx.get(collabServiceCtx);
-            //const wsProvider = new WebsocketProvider("<YOUR_WS_HOST>", "milkdown", props.currentNote.doc);
+            //const wsProvider = new WebsocketProvider("ws://localhost:1234", "r00m", props.currentNote.doc);
             collabService
               .bindDoc(props.currentNote.doc)
               .bindCtx(ctx)
-              .connect();//.setAwareness(wsProvider.awareness).connect();
+              //.setAwareness(wsProvider.awareness)
+              .connect();
           }
         });
       }

@@ -18,7 +18,6 @@ export interface NoteMetaData {
   readonly id: string;
   title: string;
   lastModified: number;
-  docGuid?: string;
 }
 
 export interface YNote {
@@ -61,7 +60,6 @@ class YjsNoteService implements NoteService {
       id: note.get("id") as string,
       title: note.get("title") as string,
       lastModified: note.get("lastModified") as number,
-      docGuid: note.get("docGuid"),
     } as NoteMetaData;
   }
 
@@ -72,14 +70,12 @@ class YjsNoteService implements NoteService {
     if (found) {
       found.set("title", note.title);
       found.set("lastModified", note.lastModified);
-      found.set("docGuid", note.docGuid);
     } else {
       const noteMap = new Y.Map<string | number | undefined>();
 
       noteMap.set("id", note.id);
       noteMap.set("title", note.title);
       noteMap.set("lastModified", note.lastModified);
-      noteMap.set("docGuid", note.docGuid);
 
       this.notes.set(note.id, noteMap);
     }
@@ -94,7 +90,6 @@ class YjsNoteService implements NoteService {
         id: note.get("id") as string,
         title: note.get("title") as string,
         lastModified: note.get("lastModified") as number,
-        docGuid: note.get("docGuid") as string | undefined,
       }
     }).sort((a, b) => b.lastModified - a.lastModified);
   }
@@ -138,12 +133,7 @@ function App() {
       throw Error(`Note with ID '${noteId}' does not exist`);
     }
 
-    const doc = new Y.Doc({ guid: noteMetaData.docGuid });
-    if (!noteMetaData.docGuid) {
-      noteMetaData.docGuid = doc.guid;
-      await noteMetaDataService.save(noteMetaData);
-    }
-
+    const doc = new Y.Doc({});
     const persistence = new IndexeddbPersistence(`note|${noteId}`, doc);
     await persistence.whenSynced;
 

@@ -17,6 +17,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.0.9",
     "daisyui": "^5.0.0",
+    "debounce": "^2.2.0",
     "nanoid": "^5.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

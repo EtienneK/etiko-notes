@@ -45,11 +45,9 @@ function Editor(props: EditorProps) {
       editor: crepe.editor,
       connect: () => {
         crepe.editor.action(ctx => {
-          console.log("CONNECT!!");
           if (props.currentNote?.doc) {
             const collabService = ctx.get(collabServiceCtx);
             //const wsProvider = new WebsocketProvider("<YOUR_WS_HOST>", "milkdown", props.currentNote.doc);
-            console.log("DOC", props.currentNote.doc);
             collabService
               .bindDoc(props.currentNote.doc)
               .bindCtx(ctx)

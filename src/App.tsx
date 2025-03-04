@@ -9,6 +9,8 @@ import { MdDeleteForever } from "react-icons/md";
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 
+import debounce from 'debounce';
+
 import Editor, { EditorRef } from "./components/Editor";
 import "./App.css";
 
@@ -135,7 +137,6 @@ function App() {
     if (!noteMetaData) {
       throw Error(`Note with ID '${noteId}' does not exist`);
     }
-    console.log(noteMetaData.docGuid);
 
     const doc = new Y.Doc({ guid: noteMetaData.docGuid });
     if (!noteMetaData.docGuid) {
@@ -210,11 +211,11 @@ function App() {
   };
 
   function onMarkdownUpdated() {
-    return async () => {
-      const markdown = editorRef.current?.getMarkdown();
-      if (currentNote && markdown) {
+    return debounce(async () => {
+      if (currentNote) {
+        const markdown = editorRef.current?.getMarkdown() ?? '';
         const maxTitleLength = 50;
-        let title = markdown.split('\n')[0].replace(/^#+/, '').trim() || 'Untitled Note';
+        let title = markdown.split('\n')[0].substring(0, maxTitleLength * 2).replace(/^#+/, '').replaceAll('&#x20;', '').trim() || 'Untitled Note';
         if (title.length > maxTitleLength) {
           title = title.substring(0, maxTitleLength).trim() + '...';
         }
@@ -227,16 +228,17 @@ function App() {
         await noteMetaDataService.save(updatedNote);
         setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
       }
-    }
+    }, 200);
   };
 
   function onMounted() {
-    setTimeout(() => {editorRef.current?.connect();}, 1); // TODO: FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    if (shouldFocus) {
-      editorRef.current?.focus();
-      setShouldFocus(false);
-    }
+    setTimeout(() => {
+      editorRef.current?.connect();
+      if (shouldFocus) {
+        editorRef.current?.focus();
+        setShouldFocus(false);
+      }
+    }, 1); // XXX: Should probaly figure out why there is a timing issue and why I need this Timeout
   }
 
   return (

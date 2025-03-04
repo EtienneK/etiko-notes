@@ -226,10 +226,12 @@ function App() {
   function onMounted() {
     setTimeout(() => {
       editorRef.current?.connect();
-      if (shouldFocus) {
-        editorRef.current?.focus();
-        setShouldFocus(false);
-      }
+      setTimeout(() => {
+        if (shouldFocus) {
+          editorRef.current?.focus();
+          setShouldFocus(false);
+        }
+      });
     }, 1); // XXX: Should probaly figure out why there is a timing issue and why I need this Timeout
   }
 

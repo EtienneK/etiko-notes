@@ -2,5 +2,5 @@
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   exclude: rootscrollgutter;
-  themes: light --default, dark --prefersdark;
+  themes: wireframe --default, black --prefersdark;
 }

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { MilkdownProvider } from "@milkdown/react";
 
+import { IoClose } from "react-icons/io5";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { MdNoteAdd } from "react-icons/md";
 import { MdDeleteForever } from "react-icons/md";
+import { FaGear } from "react-icons/fa6";
 
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -112,6 +114,7 @@ function App() {
   const editorRef = React.useRef<EditorRef>(null);
   const drawerRef = React.useRef<HTMLInputElement>(null); // Add reference to the drawer checkbox
   const deleteModalRef = React.useRef<HTMLDialogElement>(null);
+  const configurationModalRef = React.useRef<HTMLDialogElement>(null);
   const [notes, setNotes] = useState<NoteMetaData[]>([]);
   const [currentNote, setCurrentNote] = useState<YNote | null>(null);
   const [shouldFocus, setShouldFocus] = useState(false);
@@ -158,7 +161,7 @@ function App() {
       }
     };
     fetchNotes();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateNote = async () => {
@@ -248,6 +251,29 @@ function App() {
         </div>
       </dialog>
 
+      {/* Configuration Modal */}
+      <dialog className="modal" ref={configurationModalRef}>
+        <div className="modal-box">
+          <form method="dialog">
+            <button className="btn btn-circle btn-ghost absolute right-2 top-2 text-xl">
+              <IoClose />
+            </button>
+          </form>
+          <h3 className="text-lg font-bold">Configuration</h3>
+          <fieldset className="fieldset mt-5">
+            <legend className="fieldset-legend">Remote synchronization URL</legend>
+            <input type="text" className="input" placeholder="Remote synchronization URL" />
+          </fieldset>
+          <fieldset className="fieldset mt-5">
+            <legend className="fieldset-legend">Remote synchronization code</legend>
+            <input type="text" className="input" placeholder="Remote synchronization code" />
+          </fieldset>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
       <div className="drawer h-full">
         <input id="main-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
         <div className="drawer-content h-full min-h-full">
@@ -256,12 +282,12 @@ function App() {
           <div className="fixed start-0 top-0 z-1">
             <label
               htmlFor="main-drawer"
-              className="btn btn-ghost drawer-button m-2 opacity-75 p-1 text-3xl text-primary"
+              className="btn btn-ghost drawer-button m-2 p-1 text-3xl text-secondary"
             >
               <GiHamburgerMenu />
             </label>
 
-            <button className="btn btn-ghost text-3xl p-1 m-2 opacity-75 text-primary"
+            <button className="btn btn-ghost text-3xl p-1 m-2 text-secondary"
               onClick={() => deleteModalRef.current?.showModal()}
               disabled={!currentNote}
             >
@@ -270,7 +296,7 @@ function App() {
           </div>
 
           <button
-            className="btn btn-ghost text-3xl p-1 fixed top-0 end-0 m-2 z-1 opacity-75 text-primary"
+            className="btn btn-ghost text-3xl p-1 fixed top-0 end-0 m-2 z-1 text-secondary"
             onClick={handleCreateNote}
             disabled={!currentNote}
           >
@@ -295,17 +321,26 @@ function App() {
             className="drawer-overlay"
           >
           </label>
-          <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 text-ellipsis">
-            {/* Sidebar content here */}
-            {notes.map(note => (
-              <li key={note.id}>
-                <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.noteId === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
-                  {note.title}
-                  <span className='block text-xs font-semibold opacity-60'>{new Date(note.lastModified).toLocaleString()}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          <div className="menu bg-base-200 min-h-full w-80 p-4">
+            <h1 className="text-xl">etiko<span className="font-bold text-primary">notes</span></h1>
+            <ul className="text-base-content text-ellipsis mt-3 w-full">
+              {/* Sidebar content here */}
+              {notes.map(note => (
+                <li key={note.id}>
+                  <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.noteId === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
+                    {note.title}
+                    <span className='block text-xs font-semibold opacity-60'>{new Date(note.lastModified).toLocaleString()}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <button className="btn btn-ghost text-2xl p-1 m-2 text-secondary fixed top-0 right-0 z-10"
+              onClick={() => configurationModalRef.current?.showModal()}
+              disabled={!currentNote}
+            >
+              <FaGear />
+            </button>
+          </div>
         </div>
       </div>
     </>

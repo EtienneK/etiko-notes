@@ -34,7 +34,7 @@ interface NoteService {
 }
 
 class YjsNoteService implements NoteService {
-  private readonly rootDoc: Y.Doc;
+  readonly rootDoc: Y.Doc;
   private readonly notes: Y.Map<Y.Map<string | number | undefined>>;
   private readonly persistence: IndexeddbPersistence;
 
@@ -99,13 +99,12 @@ const noteMetaDataService = new YjsNoteService();
 
 function createNote() {
   const newNote: NoteMetaData = {
-    id: nanoid(),
+    id: nanoid(32),
     title: 'Untitled Note',
     lastModified: Date.now()
   };
   return newNote;
 }
-
 
 let firstCreationLock = true; // Lock for run conditions on startup: Running React in strict mode could call useEffects more than once
 
@@ -159,6 +158,7 @@ function App() {
       }
     };
     fetchNotes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateNote = async () => {

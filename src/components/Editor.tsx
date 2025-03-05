@@ -12,7 +12,7 @@ import { collab, collabServiceCtx } from "@milkdown/plugin-collab";
 import "@milkdown/crepe/theme/common/style.css";
 // import "@milkdown/crepe/theme/nord.css";
 import "./Editor.css";
-import { YNote } from '../services/YjsNoteMetaDataService';
+import { YNote } from '../services/YjsDocs';
 
 export interface EditorRef {
   editor: MilkdownEditor;

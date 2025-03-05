@@ -17,11 +17,13 @@ import Editor, { EditorRef } from "./components/Editor";
 import "./App.css";
 import {
   NoteMetaData,
-  YjsNoteMetaDataService,
+  NoteService,
+  NotebookService,
   YNote,
-} from "./services/YjsNoteMetaDataService";
+} from "./services/YjsDocs";
 
-const noteMetaDataService = new YjsNoteMetaDataService();
+const noteMetaDataService = new NotebookService();
+const noteService = new NoteService();
 
 const defaultTitle = "Untitled Note";
 function newNoteMetaData() {
@@ -46,7 +48,7 @@ function App() {
 
   async function createNoteAndSave() {
     const newNote = newNoteMetaData();
-    await noteMetaDataService.save(newNote);
+    await noteMetaDataService.saveNoteMetaData(newNote);
     return newNote;
   }
 
@@ -54,7 +56,7 @@ function App() {
     await currentNote?.persistence.destroy();
     currentNote?.doc.destroy();
 
-    const noteMetaData = await noteMetaDataService.get(noteId);
+    const noteMetaData = await noteMetaDataService.getNoteMetaData(noteId);
     if (!noteMetaData) {
       throw Error(`Note with ID '${noteId}' does not exist`);
     }
@@ -72,7 +74,7 @@ function App() {
 
   useEffect(() => {
     const fetchNotes = async () => {
-      const notesInStorage = await noteMetaDataService.list();
+      const notesInStorage = await noteMetaDataService.listNoteMetaData();
       if (notesInStorage.length > 0) {
         setNotes(notesInStorage);
         setCurrent(notesInStorage[0].id);
@@ -92,14 +94,14 @@ function App() {
   const handleCreateNote = async () => {
     const newNote = newNoteMetaData();
     setCurrent(newNote.id);
-    noteMetaDataService.save(newNote);
+    noteMetaDataService.saveNoteMetaData(newNote);
     setShouldFocus(true);
     setNotes([newNote, ...notes]);
     return newNote;
   };
 
   const handleNoteClick = async (id: string) => {
-    const note = await noteMetaDataService.get(id);
+    const note = await noteMetaDataService.getNoteMetaData(id);
     if (note) {
       setCurrent(note.id);
       if (drawerRef.current) {
@@ -110,14 +112,15 @@ function App() {
 
   const handleDeleteNote = async () => {
     if (currentNote) {
-      await currentNote.persistence.clearData();
-      await noteMetaDataService.delete(currentNote.noteId);
+      await noteMetaDataService.deleteNoteMetaData(currentNote.noteId);
+      await noteService.deleteNote(currentNote);
+
       const updatedNotes = notes.filter((note) =>
         note.id !== currentNote.noteId
       );
       if (updatedNotes.length > 0) {
         setNotes(updatedNotes);
-        const nextNote = await noteMetaDataService.get(updatedNotes[0].id);
+        const nextNote = await noteMetaDataService.getNoteMetaData(updatedNotes[0].id);
         if (nextNote) {
           setCurrent(nextNote.id);
         }
@@ -148,7 +151,7 @@ function App() {
           lastModified: Date.now(),
         };
         // setCurrent(updatedNote);
-        await noteMetaDataService.save(updatedNote);
+        await noteMetaDataService.saveNoteMetaData(updatedNote);
         setNotes([
           updatedNote,
           ...notes.filter((note) => note.id !== updatedNote.id),

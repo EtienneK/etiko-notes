@@ -47,7 +47,12 @@ function Editor(props: EditorProps) {
         crepe.editor.action(ctx => {
           if (props.currentNote?.doc) {
             const collabService = ctx.get(collabServiceCtx);
-            //const wsProvider = new WebsocketProvider("ws://localhost:1234", "r00m", props.currentNote.doc);
+            /*
+            const wsProvider = new WebsocketProvider("ws://localhost:1234", `note_${props.currentNote.noteId}`, props.currentNote.doc);
+            wsProvider.on('sync', isSynced => {
+              console.log("EDITOR WS SYNC", isSynced) // logs "connected" or "disconnected"
+            });
+            */
             collabService
               .bindDoc(props.currentNote.doc)
               .bindCtx(ctx)

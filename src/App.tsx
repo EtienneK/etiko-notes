@@ -64,10 +64,12 @@ function App() {
     const fetchNotes = async () => {
       const notesInStorage = await noteMetaDataService.listNoteMetaData();
       if (notesInStorage.length > 0) {
+        //noteMetaDataService.connectRemoteSync("ws://localhost:1234", "guriejhguiorehegiu");
         setNotes(notesInStorage);
         setCurrent(notesInStorage[0].id);
       } else {
         if (firstCreationLock) {
+          //noteMetaDataService.connectRemoteSync("ws://localhost:1234", "guriejhguiorehegiu");
           firstCreationLock = false;
           const newNote = await createNoteAndSave();
           setNotes([newNote]);

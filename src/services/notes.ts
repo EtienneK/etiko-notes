@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
+import { WebsocketProvider } from 'y-websocket';
 
 export interface YNote {
   readonly noteId: string;
@@ -17,11 +18,30 @@ export class NotebookService {
   readonly rootDoc: Y.Doc;
   private readonly notes: Y.Map<Y.Map<string | number | undefined>>;
   private readonly persistence: IndexeddbPersistence;
+  private wsProvider?: WebsocketProvider;
 
   constructor() {
     this.rootDoc = new Y.Doc();
     this.notes = this.rootDoc.getMap();
     this.persistence = new IndexeddbPersistence("notes-list", this.rootDoc);
+  }
+/*
+  connectRemoteSync(url: string, code: string) {
+
+    this.wsProvider = new WebsocketProvider(url, `notebook_${code}`, this.rootDoc, {
+      connect: false,
+    });
+
+    this.wsProvider.on('sync', isSynced => {
+      console.log("WS SYNC", isSynced) // logs "connected" or "disconnected"
+    });
+
+    this.wsProvider.connect();
+
+  }
+*/
+  disconnectRemoteSync() {
+    this.wsProvider?.disconnect();
   }
 
   async deleteNoteMetaData(noteId: string) {

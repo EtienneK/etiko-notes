@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "cross-env HOST=localhost PORT=1234 node ./node_modules/y-websocket/bin/server.cjs"
+    "server": "cross-env HOST=localhost PORT=1234 YPERSISTENCE=./.db node ./node_modules/y-websocket/bin/server.cjs"
   },
   "dependencies": {
     "@milkdown/crepe": "^7.6.3",

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { nanoid } from 'nanoid';
+import React, { useEffect, useState } from "react";
+import { nanoid } from "nanoid";
 import { MilkdownProvider } from "@milkdown/react";
 
 import { IoClose } from "react-icons/io5";
@@ -8,104 +8,29 @@ import { MdNoteAdd } from "react-icons/md";
 import { MdDeleteForever } from "react-icons/md";
 import { FaGear } from "react-icons/fa6";
 
-import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
+import * as Y from "yjs";
+import { IndexeddbPersistence } from "y-indexeddb";
 
-import debounce from 'debounce';
+import debounce from "debounce";
 
 import Editor, { EditorRef } from "./components/Editor";
 import "./App.css";
+import {
+  NoteMetaData,
+  YjsNoteMetaDataService,
+  YNote,
+} from "./services/YjsNoteMetaDataService";
 
-export interface NoteMetaData {
-  readonly id: string;
-  title: string;
-  lastModified: number;
-}
+const noteMetaDataService = new YjsNoteMetaDataService();
 
-export interface YNote {
-  readonly noteId: string;
-  readonly doc: Y.Doc;
-  readonly persistence: IndexeddbPersistence;
-}
-
-interface NoteService {
-  save(note: NoteMetaData): Promise<void>;
-  list(): Promise<NoteMetaData[]>;
-  get(id: string): Promise<NoteMetaData | null>;
-  delete(id: string): Promise<void>;
-}
-
-class YjsNoteService implements NoteService {
-  readonly rootDoc: Y.Doc;
-  private readonly notes: Y.Map<Y.Map<string | number | undefined>>;
-  private readonly persistence: IndexeddbPersistence;
-
-  constructor() {
-    this.rootDoc = new Y.Doc();
-    this.notes = this.rootDoc.getMap();
-    this.persistence = new IndexeddbPersistence("notes-list", this.rootDoc);
-  }
-
-  async delete(id: string) {
-    await this.persistence.whenSynced;
-
-    this.notes.delete(id);
-  }
-
-  async get(id: string) {
-    await this.persistence.whenSynced;
-
-    const note = this.notes.get(id);
-    if (!note) return null;
-
-    return {
-      id: note.get("id") as string,
-      title: note.get("title") as string,
-      lastModified: note.get("lastModified") as number,
-    } as NoteMetaData;
-  }
-
-  async save(note: NoteMetaData) {
-    await this.persistence.whenSynced;
-
-    const found = this.notes.get(note.id);
-    if (found) {
-      found.set("title", note.title);
-      found.set("lastModified", note.lastModified);
-    } else {
-      const noteMap = new Y.Map<string | number | undefined>();
-
-      noteMap.set("id", note.id);
-      noteMap.set("title", note.title);
-      noteMap.set("lastModified", note.lastModified);
-
-      this.notes.set(note.id, noteMap);
-    }
-  }
-
-  async list() {
-    await this.persistence.whenSynced;
-
-    return Array.from(this.notes.keys()).map(id => {
-      const note = this.notes.get(id)!;
-      return {
-        id: note.get("id") as string,
-        title: note.get("title") as string,
-        lastModified: note.get("lastModified") as number,
-      }
-    }).sort((a, b) => b.lastModified - a.lastModified);
-  }
-}
-
-const noteMetaDataService = new YjsNoteService();
-
-function createNote() {
-  const newNote: NoteMetaData = {
+const defaultTitle = "Untitled Note";
+function newNoteMetaData() {
+  const metaData: NoteMetaData = {
     id: nanoid(32),
-    title: 'Untitled Note',
-    lastModified: Date.now()
+    title: defaultTitle,
+    lastModified: Date.now(),
   };
-  return newNote;
+  return metaData;
 }
 
 let firstCreationLock = true; // Lock for run conditions on startup: Running React in strict mode could call useEffects more than once
@@ -120,7 +45,7 @@ function App() {
   const [shouldFocus, setShouldFocus] = useState(false);
 
   async function createNoteAndSave() {
-    const newNote = createNote();
+    const newNote = newNoteMetaData();
     await noteMetaDataService.save(newNote);
     return newNote;
   }
@@ -165,7 +90,7 @@ function App() {
   }, []);
 
   const handleCreateNote = async () => {
-    const newNote = createNote();
+    const newNote = newNoteMetaData();
     setCurrent(newNote.id);
     noteMetaDataService.save(newNote);
     setShouldFocus(true);
@@ -187,7 +112,9 @@ function App() {
     if (currentNote) {
       await currentNote.persistence.clearData();
       await noteMetaDataService.delete(currentNote.noteId);
-      const updatedNotes = notes.filter(note => note.id !== currentNote.noteId);
+      const updatedNotes = notes.filter((note) =>
+        note.id !== currentNote.noteId
+      );
       if (updatedNotes.length > 0) {
         setNotes(updatedNotes);
         const nextNote = await noteMetaDataService.get(updatedNotes[0].id);
@@ -205,23 +132,30 @@ function App() {
   function onMarkdownUpdated() {
     return debounce(async () => {
       if (currentNote) {
-        const markdown = editorRef.current?.getMarkdown() ?? '';
+        const markdown = editorRef.current?.getMarkdown() ?? "";
         const maxTitleLength = 50;
-        let title = markdown.split('\n')[0].substring(0, maxTitleLength * 2).replace(/^#+/, '').replaceAll('&#x20;', '').trim() || 'Untitled Note';
+        let title =
+          markdown.split("\n")[0].substring(0, maxTitleLength * 2).replace(
+            /^#+/,
+            "",
+          ).replaceAll("&#x20;", "").trim() || defaultTitle;
         if (title.length > maxTitleLength) {
-          title = title.substring(0, maxTitleLength).trim() + '...';
+          title = title.substring(0, maxTitleLength).trim() + "...";
         }
         const updatedNote: NoteMetaData = {
           id: currentNote.noteId,
           title,
-          lastModified: Date.now()
+          lastModified: Date.now(),
         };
         // setCurrent(updatedNote);
         await noteMetaDataService.save(updatedNote);
-        setNotes([updatedNote, ...notes.filter(note => note.id !== updatedNote.id)]);
+        setNotes([
+          updatedNote,
+          ...notes.filter((note) => note.id !== updatedNote.id),
+        ]);
       }
     }, 200);
-  };
+  }
 
   function onMounted() {
     setTimeout(() => {
@@ -247,7 +181,9 @@ function App() {
             <form method="dialog">
               {/* if there is a button in form, it will close the modal */}
               <button className="btn btn-neutral mr-2">Cancel</button>
-              <button className="btn btn-primary" onClick={handleDeleteNote}>Delete</button>
+              <button className="btn btn-primary" onClick={handleDeleteNote}>
+                Delete
+              </button>
             </form>
           </div>
         </div>
@@ -263,12 +199,24 @@ function App() {
           </form>
           <h3 className="text-lg font-bold">Configuration</h3>
           <fieldset className="fieldset mt-5">
-            <legend className="fieldset-legend">Remote synchronization URL</legend>
-            <input type="text" className="input" placeholder="Remote synchronization URL" />
+            <legend className="fieldset-legend">
+              Remote synchronization URL
+            </legend>
+            <input
+              type="text"
+              className="input"
+              placeholder="Remote synchronization URL"
+            />
           </fieldset>
           <fieldset className="fieldset mt-5">
-            <legend className="fieldset-legend">Remote synchronization code</legend>
-            <input type="text" className="input" placeholder="Remote synchronization code" />
+            <legend className="fieldset-legend">
+              Remote synchronization code
+            </legend>
+            <input
+              type="text"
+              className="input"
+              placeholder="Remote synchronization code"
+            />
           </fieldset>
         </div>
         <form method="dialog" className="modal-backdrop">
@@ -277,7 +225,12 @@ function App() {
       </dialog>
 
       <div className="drawer h-full">
-        <input id="main-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
+        <input
+          id="main-drawer"
+          type="checkbox"
+          className="drawer-toggle"
+          ref={drawerRef}
+        />
         <div className="drawer-content h-full min-h-full">
           {/* Page content here */}
 
@@ -289,7 +242,8 @@ function App() {
               <GiHamburgerMenu />
             </label>
 
-            <button className="btn btn-ghost text-3xl p-1 m-2 text-secondary"
+            <button
+              className="btn btn-ghost text-3xl p-1 m-2 text-secondary"
               onClick={() => deleteModalRef.current?.showModal()}
               disabled={!currentNote}
             >
@@ -314,7 +268,6 @@ function App() {
               readonly={!currentNote}
             />
           </MilkdownProvider>
-
         </div>
         <div className="drawer-side z-2">
           <label
@@ -324,19 +277,29 @@ function App() {
           >
           </label>
           <div className="menu bg-base-200 min-h-full w-80 p-4">
-            <h1 className="text-xl">etiko<span className="font-bold text-primary">notes</span></h1>
+            <h1 className="text-xl">
+              etiko<span className="font-bold text-primary">notes</span>
+            </h1>
             <ul className="text-base-content text-ellipsis mt-3 w-full">
               {/* Sidebar content here */}
-              {notes.map(note => (
+              {notes.map((note) => (
                 <li key={note.id}>
-                  <a className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${currentNote?.noteId === note.id ? 'menu-active' : ''}`} onClick={() => handleNoteClick(note.id)}>
+                  <a
+                    className={`block text-ellipsis w-70 overflow-hidden whitespace-nowrap ${
+                      currentNote?.noteId === note.id ? "menu-active" : ""
+                    }`}
+                    onClick={() => handleNoteClick(note.id)}
+                  >
                     {note.title}
-                    <span className='block text-xs font-semibold opacity-60'>{new Date(note.lastModified).toLocaleString()}</span>
+                    <span className="block text-xs font-semibold opacity-60">
+                      {new Date(note.lastModified).toLocaleString()}
+                    </span>
                   </a>
                 </li>
               ))}
             </ul>
-            <button className="btn btn-ghost text-2xl p-1 m-2 text-secondary fixed top-0 right-0 z-10"
+            <button
+              className="btn btn-ghost text-2xl p-1 m-2 text-secondary fixed top-0 right-0 z-10"
               onClick={() => configurationModalRef.current?.showModal()}
               disabled={!currentNote}
             >

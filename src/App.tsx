@@ -8,9 +8,6 @@ import { MdNoteAdd } from "react-icons/md";
 import { MdDeleteForever } from "react-icons/md";
 import { FaGear } from "react-icons/fa6";
 
-import * as Y from "yjs";
-import { IndexeddbPersistence } from "y-indexeddb";
-
 import debounce from "debounce";
 
 import Editor, { EditorRef } from "./components/Editor";
@@ -20,13 +17,13 @@ import {
   NoteService,
   NotebookService,
   YNote,
-} from "./services/YjsDocs";
+} from "./services/notes";
 
 const noteMetaDataService = new NotebookService();
 const noteService = new NoteService();
 
 const defaultTitle = "Untitled Note";
-function newNoteMetaData() {
+function newNoteMetaData(): NoteMetaData {
   const metaData: NoteMetaData = {
     id: nanoid(32),
     title: defaultTitle,
@@ -60,16 +57,7 @@ function App() {
     if (!noteMetaData) {
       throw Error(`Note with ID '${noteId}' does not exist`);
     }
-
-    const doc = new Y.Doc({});
-    const persistence = new IndexeddbPersistence(`note|${noteId}`, doc);
-    await persistence.whenSynced;
-
-    setCurrentNote({
-      noteId,
-      doc,
-      persistence,
-    });
+    setCurrentNote(await noteService.loadNote(noteId));
   }
 
   useEffect(() => {

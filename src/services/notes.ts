@@ -85,7 +85,19 @@ export class NoteService {
     }
   }
 
-  async deleteNote(note: YNote) {
+  async loadNote(noteId: string): Promise<YNote> {
+    const doc = new Y.Doc({});
+    const persistence = new IndexeddbPersistence(`note|${noteId}`, doc);
+    await persistence.whenSynced;
+
+    return {
+      noteId,
+      doc,
+      persistence,
+    };
+  }
+
+  async deleteNote(note: YNote): Promise<void> {
     await note.persistence.clearData();
     await this.destroy(note);
   }
